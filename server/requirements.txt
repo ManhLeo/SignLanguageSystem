@@ -1,0 +1,6 @@
+Flask>=2.0.1
+tensorflow==2.16.1
+numpy>=1.26.0
+opencv-python>=4.8.0
+requests>=2.26.0
+Pillow>=10.0.0

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhận diện ngôn ngữ ký hiệu</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .container {
+            max-width: 800px;
+        }
+        h1 {
+            color: #2c3e50;
+            font-weight: 700;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .result-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        .result-container:hover {
+            transform: translateY(-5px);
+        }
+        .result-text {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            text-align: center;
+            margin: 25px 0;
+            font-weight: 500;
+            min-height: 60px;
+        }
+        .confidence-bar {
+            height: 25px;
+            background-color: #e9ecef;
+            border-radius: 15px;
+            margin: 15px 0;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+            transition: width 0.5s ease;
+            border-radius: 15px;
+        }
+        .status {
+            text-align: center;
+            color: #6c757d;
+            margin-top: 15px;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        .history-container {
+            margin-top: 30px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        .history-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .history-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .history-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .history-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .history-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.3s ease;
+        }
+        .history-item:hover {
+            background-color: #f8f9fa;
+        }
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        h3 {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        #confidenceText {
+            font-size: 1.2rem;
+            color: #28a745;
+            font-weight: 500;
+            margin: 10px 0;
+        }
+        .text-muted {
+            color: #6c757d !important;
+        }
+        /* Style cho video stream */
+        .video-container {
+            position: relative;
+            width: 100%;
+            margin-bottom: 20px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            background-color: #000;
+            aspect-ratio: 4/3;
+        }
+        #videoStream {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .stream-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            z-index: 1;
+        }
+        .stream-status.active {
+            background: rgba(40, 167, 69, 0.8);
+        }
+        .stream-status.inactive {
+            background: rgba(220, 53, 69, 0.8);
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.2rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .loading-overlay.active {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Nhận diện ngôn ngữ ký hiệu</h1>
+        
+        <!-- Video stream container -->
+        <div class="video-container">
+            <img id="videoStream" src="" alt="Video Stream">
+            <div id="streamStatus" class="stream-status inactive">Đang kết nối...</div>
+            <div id="loadingOverlay" class="loading-overlay">
+                <div class="spinner-border text-light" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="result-container">
+            <div class="result-text" id="recognizedText">Đang chờ kết quả...</div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidenceBar" style="width: 0%"></div>
+            </div>
+            <div class="text-center" id="confidenceText">Độ tin cậy: 0%</div>
+            <div class="status" id="status">Trạng thái: Đang chạy</div>
+        </div>
+
+        <div class="result-container history-container">
+            <h3>Lịch sử nhận diện</h3>
+            <div id="historyList"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Biến để theo dõi trạng thái kết nối
+        let isConnected = false;
+        let lastUpdateTime = 0;
+        const CONNECTION_TIMEOUT = 5000; // 5 giây
+
+        // Hàm cập nhật kết quả
+        function updateResult(data) {
+            const recognizedText = document.getElementById('recognizedText');
+            const confidenceBar = document.getElementById('confidenceBar');
+            const confidenceText = document.getElementById('confidenceText');
+            const status = document.getElementById('status');
+
+            if (data.error) {
+                recognizedText.textContent = 'Lỗi: ' + data.error;
+                confidenceBar.style.width = '0%';
+                confidenceText.textContent = 'Độ tin cậy: 0%';
+                status.textContent = 'Trạng thái: Lỗi';
+                updateConnectionStatus(false);
+            } else {
+                const confidence = (data.confidence * 100).toFixed(1);
+                if (confidence >= 70) {
+                    recognizedText.textContent = data.recognized_text;
+                    confidenceBar.style.width = confidence + '%';
+                    confidenceText.textContent = `Độ tin cậy: ${confidence}%`;
+                    status.textContent = 'Trạng thái: Đang chạy';
+                    updateConnectionStatus(true);
+
+                    // Thêm vào lịch sử
+                    addToHistory(data);
+                } else {
+                    recognizedText.textContent = 'Đang chờ kết quả...';
+                    confidenceBar.style.width = '0%';
+                    confidenceText.textContent = 'Độ tin cậy: 0%';
+                    status.textContent = 'Trạng thái: Đang chạy';
+                }
+            }
+        }
+
+        // Hàm cập nhật video stream
+        function updateVideoStream(data) {
+            const videoStream = document.getElementById('videoStream');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            
+            if (data.image) {
+                // Hiển thị loading overlay
+                loadingOverlay.classList.add('active');
+                
+                // Tạo một hình ảnh mới để kiểm tra load
+                const img = new Image();
+                img.onload = function() {
+                    videoStream.src = data.image;
+                    loadingOverlay.classList.remove('active');
+                    updateConnectionStatus(true);
+                };
+                img.onerror = function() {
+                    console.error('Error loading image');
+                    loadingOverlay.classList.remove('active');
+                    updateConnectionStatus(false);
+                };
+                img.src = data.image;
+            }
+        }
+
+        // Hàm cập nhật trạng thái kết nối
+        function updateConnectionStatus(connected) {
+            const streamStatus = document.getElementById('streamStatus');
+            isConnected = connected;
+            lastUpdateTime = Date.now();
+            
+            if (connected) {
+                streamStatus.textContent = 'Đang phát';
+                streamStatus.className = 'stream-status active';
+            } else {
+                streamStatus.textContent = 'Mất kết nối';
+                streamStatus.className = 'stream-status inactive';
+            }
+        }
+
+        // Hàm kiểm tra kết nối
+        function checkConnection() {
+            if (isConnected && Date.now() - lastUpdateTime > CONNECTION_TIMEOUT) {
+                updateConnectionStatus(false);
+            }
+        }
+
+        // Hàm thêm kết quả vào lịch sử
+        function addToHistory(data) {
+            const historyList = document.getElementById('historyList');
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            
+            const time = new Date(data.timestamp).toLocaleTimeString();
+            historyItem.innerHTML = `
+                <div class="d-flex justify-content-between">
+                    <span>${data.recognized_text}</span>
+                    <span class="text-muted">${time}</span>
+                </div>
+                <small class="text-muted">Độ tin cậy: ${(data.confidence * 100).toFixed(1)}%</small>
+            `;
+            
+            historyList.insertBefore(historyItem, historyList.firstChild);
+            
+            // Giới hạn số lượng mục trong lịch sử
+            if (historyList.children.length > 10) {
+                historyList.removeChild(historyList.lastChild);
+            }
+        }
+
+        // Hàm lấy kết quả mới nhất
+        async function getLatestResult() {
+            try {
+                const response = await fetch('http://127.0.0.1:5002/api/latest-result');
+                const data = await response.json();
+                updateResult(data);
+            } catch (error) {
+                console.error('Error fetching latest result:', error);
+                updateConnectionStatus(false);
+            }
+        }
+
+        // Hàm lấy video stream mới nhất
+        async function getLatestStream() {
+            try {
+                const response = await fetch('http://127.0.0.1:5002/api/latest-stream');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data && data.image) {
+                    updateVideoStream(data);
+                } else {
+                    throw new Error('Invalid stream data');
+                }
+            } catch (error) {
+                console.error('Error fetching video stream:', error);
+                updateConnectionStatus(false);
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                loadingOverlay.classList.remove('active');
+            }
+        }
+
+        // Cập nhật kết quả mỗi giây
+        setInterval(getLatestResult, 1000);
+
+        // Cập nhật video stream mỗi 100ms
+        setInterval(getLatestStream, 100);
+
+        // Kiểm tra kết nối mỗi giây
+        setInterval(checkConnection, 1000);
+
+        // Lấy kết quả ban đầu
+        getLatestResult();
+        getLatestStream();
+    </script>
+</body>
+</html> 

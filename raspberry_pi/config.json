@@ -1,0 +1,12 @@
+{
+  "server_url": "http://172.20.10.3:5001/api/recognize",
+  "web_api_url": "http://172.20.10.3:5002/api",
+  "camera_settings": {
+    "resolution": "640x480",
+    "frame_rate": 30
+  },
+  "audio_settings": {
+    "volume": 100,
+    "output_device": "default"
+  }
+} 
