@@ -20,7 +20,7 @@ MEAN_PATH = os.path.join(BASE_DIR, "../models/mean.npy")
 STD_PATH = os.path.join(BASE_DIR, "../models/std.npy")
 
 # Cấu hình web server
-WEB_API_URL = "http://127.0.0.1:5002/api"
+WEB_API_URL = "http://localhost:5002/api"
 
 # Tải model và các file liên quan
 model = load_model(MODEL_PATH)

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>ASL</title>
+    <link rel="stylesheet" href="./index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body{
+            background-color: white;
+        }
+        .taskbar{
+            display: flex;
+            width: 100%;
+            padding: 10px 0px 10px 0px;
+            font-size: 32px;
+            font-weight: bolder;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border-bottom: 1px solid rgb(208, 207, 207);
+            box-shadow: 1px 1px 5px rgb(208, 207, 207);
+        }
+        .container{
+            display: flex;
+            justify-content: center;
+            /* align-items: center; */
+            gap: 40px;
+            margin-top: 20px;
+        }
+        .video{
+            border: 1px solid transparent;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .prediction{
+            height: max-content;
+            width: 350px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            /* align-items: center; */
+            gap: 10px;
+            border: 1px dashed rgb(208, 207, 207);
+        }
+        .pred_container{
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            background-color: #F4F7FE;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        #prediction{
+            font-size: 30px;
+            font-weight: bolder;
+            color: #2563EB;
+        }
+        li{
+            margin: 0 0 0 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="taskbar">
+        <i class="fa-solid fa-hands-asl-interpreting fa-bounce" style="color: #74C0FC;"></i>
+        <p>SignLang</p>
+    </div>
+    <div class="container">
+        <div class="video">
+            <video id="video" width="640" height="480" autoplay></video>
+            <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+        </div>
+        <div class="prediction">
+            <h2>Kết quả nhận diện</h2>
+            <div class="pred_container">
+                <div id="prediction" >...</div>
+            </div>
+            <h4>Lịch sử nhận diện:</h4>
+            <ul>
+                <!-- <li>goodbye</li>
+                <li>love</li>
+                <li>hello</li> -->
+                <li>...</li>
+            </ul>
+        </div>
+    </div>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const predictionDiv = document.getElementById('prediction');
+        const context = canvas.getContext('2d');
+        const historyList = document.querySelector('ul');
+        let historyArray = [];
+    
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Lỗi khi truy cập camera: ", err);
+            });
+    
+        setInterval(() => {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append('file', blob, 'frame.jpg');
+    
+                fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.label != "..." && data.confidence !== undefined && data.confidence > 0.7) {
+                        predictionDiv.innerHTML = ` ${data.label}`;
+    
+                        if (!historyArray.includes(data.label)) {
+                            historyArray.unshift(data.label); // thêm vào đầu
+                            if (historyArray.length > 3) {
+                                historyArray.pop(); // xóa phần tử cũ
+                            }
+    
+                            // Render lại danh sách
+                            historyList.innerHTML = "";
+                            historyArray.forEach(label => {
+                                const li = document.createElement('li');
+                                li.textContent = label;
+                                historyList.appendChild(li);
+                            });
+                        }
+    
+                    }
+                    // else {
+                    //     predictionDiv.innerHTML = `⏳ Đang thu thập dữ liệu... (${new Date().toLocaleTimeString()})`;
+                    // }
+                })
+                .catch(error => {
+                    console.error('Lỗi:', error);
+                    predictionDiv.innerHTML = "Lỗi khi gửi dữ liệu!";
+                });
+            }, 'image/jpeg');
+        }, 34);
+    </script>
+</body>
+</html>
